@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Research Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0B0B0D;
+      --surface:   #131316;
+      --surface2:  #1B1B20;
+      --border:    #27272E;
+      --border2:   #35353F;
+      --amber:     #E8931A;
+      --amber-dim: #A8650E;
+      --amber-bg:  #1E1508;
+      --text:      #EDEBE4;
+      --text-2:    #9898A8;
+      --text-3:    #5C5C70;
+      --teal:      #2EC4A0;
+      --teal-bg:   #081A16;
+      --red:       #E05252;
+      --red-bg:    #1E0808;
+      --green:     #5CB87E;
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    .app { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Header ── */
+    .header {
+      padding: 52px 0 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+    .header-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-tag::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--amber);
+      border-radius: 50%;
+    }
+    .header h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.1;
+      color: var(--text);
+    }
+    .header p {
+      margin-top: 10px;
+      color: var(--text-2);
+      font-size: 15px;
+      font-weight: 300;
+      max-width: 480px;
+    }
+
+    /* ── Search box ── */
+    .search-wrap { position: relative; margin-bottom: 12px; }
+    .search-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 16px 140px 16px 20px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-input::placeholder { color: var(--text-3); }
+    .search-input:focus { border-color: var(--amber-dim); }
+
+    .search-btn {
+      position: absolute;
+      right: 8px; top: 50%;
+      transform: translateY(-50%);
+      background: var(--amber);
+      color: #0B0B0D;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: .04em;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .search-btn:hover { background: #F0A030; }
+    .search-btn:active { transform: translateY(-50%) scale(.97); }
+    .search-btn:disabled { background: var(--border2); color: var(--text-3); cursor: not-allowed; }
+
+    .hint { font-size: 12px; color: var(--text-3); font-family: var(--font-mono); }
+    .hint span { color: var(--amber-dim); }
+
+    /* ── Loading ── */
+    .loading {
+      padding: 48px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .loading-ring {
+      width: 44px; height: 44px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: .08em;
+      color: var(--text-2);
+    }
+    .search-log {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: left;
+      line-height: 1.8;
+    }
+    .search-log strong { color: var(--amber-dim); }
+
+    /* ── Error ── */
+    .error-box {
+      background: var(--red-bg);
+      border: 1px solid #3A1515;
+      border-radius: 10px;
+      padding: 20px 24px;
+      color: var(--red);
+      font-size: 14px;
+      margin-top: 24px;
+    }
+    .error-box strong { display: block; font-family: var(--font-display); margin-bottom: 6px; font-weight: 700; }
+
+    /* ── Report ── */
+    .report { margin-top: 8px; animation: fadeUp .4s ease both; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+    .report-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .report-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--amber);
+    }
+    .report-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+    }
+
+    /* ── Section card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+
+    /* Executive summary */
+    .exec-summary {
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1.75;
+      color: var(--text);
+      border-left: 3px solid var(--amber);
+      padding-left: 20px;
+    }
+
+    /* Key findings */
+    .findings-list { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .finding-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 0 14px;
+    }
+    .finding-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--amber-dim);
+      padding-top: 2px;
+    }
+    .finding-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .finding-detail {
+      font-size: 13.5px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    /* Analysis */
+    .analysis-text {
+      font-size: 14.5px;
+      color: var(--text-2);
+      line-height: 1.75;
+    }
+
+    /* Conclusion */
+    .conclusion-text {
+      font-size: 14.5px;
+      color: var(--teal);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* Sources */
+    .sources-grid { display: flex; flex-direction: column; gap: 8px; }
+    .source-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      transition: border-color .15s;
+    }
+    .source-item:hover { border-color: var(--border2); }
+    .source-icon {
+      width: 6px; height: 6px;
+      background: var(--amber);
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .source-title {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 400;
+    }
+    .source-url {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 560px;
+    }
+
+    /* Search queries pill strip */
+    .queries-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+    .query-pill {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .05em;
+      padding: 4px 10px;
+      background: var(--amber-bg);
+      border: 1px solid #3A2508;
+      border-radius: 20px;
+      color: var(--amber-dim);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef } = React;
+
+    function App() {
+      const [topic, setTopic]     = useState('');
+      const [status, setStatus]   = useState('idle'); // idle | loading | done | error
+      const [report, setReport]   = useState(null);
+      const [errorMsg, setError]  = useState('');
+      const inputRef              = useRef(null);
+
+      const examples = [
+        'Latest advancements in quantum computing 2025',
+        'Impact of AI on software engineering jobs',
+        'Oracle database trends and cloud migration',
+      ];
+
+      async function handleResearch() {
+        if (!topic.trim() || status === 'loading') return;
+        setStatus('loading');
+        setReport(null);
+        setError('');
+
+        try {
+          const res = await fetch('/api/research', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: topic.trim() }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.detail || 'Research failed');
+          }
+
+          setReport(data);
+          setStatus('done');
+        } catch (err) {
+          setError(err.message || 'Something went wrong. Please try again.');
+          setStatus('error');
+        }
+      }
+
+      function handleKeyDown(e) {
+        if (e.key === 'Enter') handleResearch();
+      }
+
+      return (
+        <div className="app">
+
+          {/* Header */}
+          <header className="header">
+            <div className="header-tag">AI Research Agent</div>
+            <h1>Intelligence Briefing<br/>on Any Topic</h1>
+            <p>Enter a topic and the agent autonomously searches the web, cross-references sources, and compiles a structured research report.</p>
+          </header>
+
+          {/* Search */}
+          <div className="search-wrap">
+            <input
+              ref={inputRef}
+              className="search-input"
+              type="text"
+              placeholder="e.g. Latest trends in generative AI for enterprise..."
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={status === 'loading'}
+            />
+            <button
+              className="search-btn"
+              onClick={handleResearch}
+              disabled={status === 'loading' || !topic.trim()}
+            >
+              {status === 'loading' ? 'Researching…' : 'Research →'}
+            </button>
+          </div>
+
+          <p className="hint">
+            Try: {examples.map((ex, i) => (
+              <span key={i}>
+                <span
+                  style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}
+                  onClick={() => { setTopic(ex); inputRef.current?.focus(); }}
+                >{ex}</span>
+                {i < examples.length - 1 ? ' · ' : ''}
+              </span>
+            ))}
+          </p>
+
+          {/* Loading */}
+          {status === 'loading' && (
+            <div className="loading">
+              <div className="loading-ring" />
+              <div className="loading-text">Agent is searching the web…</div>
+              <div className="search-log">
+                <strong>// Autonomous research in progress</strong><br />
+                Querying real-time web sources<br />
+                Cross-referencing multiple outlets<br />
+                Synthesizing findings into a briefing
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {status === 'error' && (
+            <div className="error-box">
+              <strong>Research failed</strong>
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Report */}
+          {status === 'done' && report && (
+            <div className="report">
+              <div className="report-header">
+                <div className="report-title">Research Briefing</div>
+                <div className="report-meta">
+                  {report.search_queries?.length ?? 0} searches · {report.sources?.length ?? 0} sources
+                </div>
+              </div>
+
+              {/* Search queries */}
+              {report.search_queries?.length > 0 && (
+                <div className="queries-strip">
+                  {report.search_queries.map((q, i) => (
+                    <span className="query-pill" key={i}>🔍 {q}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Executive Summary */}
+              {report.executive_summary && (
+                <div className="card">
+                  <div className="card-label">Executive Summary</div>
+                  <p className="exec-summary">{report.executive_summary}</p>
+                </div>
+              )}
+
+              {/* Key Findings */}
+              {report.key_findings?.length > 0 && (
+                <div className="card">
+                  <div className="card-label">Key Findings</div>
+                  <ul className="findings-list">
+                    {report.key_findings.map((f, i) => (
+                      <li className="finding-item" key={i}>
+                        <span className="finding-num">{String(i + 1).padStart(2, '0')}</span>
+                        <div>
+                          <div className="finding-title">{f.title}</div>
+                          <div className="finding-detail">{f.detail}</div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Analysis */}
+              {report.analysis && (
+                <div className="card">
+                  <div className="card-label">Analysis</div>
+                  <p className="analysis-text">{report.analysis}</p>
+                </div>
+              )}
+
+              {/* Conclusion */}
+              {report.conclusion && (
+                <div className="card">
+                  <div className="card-label">Conclusion</div>
+                  <p className="conclusion-text">{report.conclusion}</p>
+                </div>
+              )}
+
+              {/* Sources */}
+              {report.sources?.length > 0 && (
+                <div className="card">
+                  <div className="card-label">Sources</div>
+                  <div className="sources-grid">
+                    {report.sources.map((s, i) => (
+                      <a
+                        className="source-item"
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        key={i}
+                      >
+                        <div className="source-icon" />
+                        <div>
+                          <div className="source-title">{s.title}</div>
+                          <div className="source-url">{s.url}</div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
