@@ -4,7 +4,8 @@ import os
 import google.generativeai as genai
 
 # Load Google Gemini API key from environment
-gemini_api_key = os.getenv("GOOGLE_API_KEY")
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+
 
 # Configure Gemini
 if gemini_api_key:
@@ -124,7 +125,7 @@ def run_research(topic: str) -> dict:
 
     try:
         # Use Gemini 1.5 Flash (free tier, very fast)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         prompt = f"{SYSTEM_PROMPT}\n\nResearch this topic thoroughly and provide a comprehensive briefing: {topic}"
         
