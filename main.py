@@ -1,5 +1,9 @@
 import asyncio
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -10,12 +14,13 @@ from agent import run_research
 
 app = FastAPI(
     title="Web Research Agent API",
-    description="AI-powered research agent using Claude + web search",
+    description="AI-powered research agent using Groq + web search",
     version="1.0.0",
 )
 
 # Serve static files (the React frontend)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # ── Request / Response models ──────────────────────────────────────────────────
@@ -71,9 +76,18 @@ async def health():
     return {"status": "ok"}
 
 
+# ⚠️ IMPORTANT: Catch-all route MUST be at the END for React Router
+@app.get("/{full_path:path}")
+async def catch_all(full_path: str):
+    """Fallback to index.html for React Router."""
+    return FileResponse("static/index.html")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Use PORT from environment (Render provides this) or default to 5000 for local
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
